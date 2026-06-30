@@ -16,7 +16,7 @@ Or directly from GitHub:
 npm install -g git+https://github.com/Kohlibrie/homebridge-http-climate.git
 ```
 
-Then add an `HttpTemperature` accessory to your Homebridge `config.json`.
+Then add an `HttpClimate` accessory to your Homebridge `config.json`.
 
 ## Configuration
 
@@ -52,7 +52,7 @@ Endpoint response:
 Config:
 ```json
 {
-  "accessory": "HttpTemperature",
+  "accessory": "HttpClimate",
   "name": "Outside",
   "url": "http://192.168.1.100/sensor",
   "field_name": "temperature",
@@ -77,7 +77,7 @@ Endpoint response:
 Config:
 ```json
 {
-  "accessory": "HttpTemperature",
+  "accessory": "HttpClimate",
   "name": "Outside",
   "url": "http://192.168.1.100/sensor",
   "field_name": "value.temp_int",
@@ -89,7 +89,7 @@ Config:
 
 ```json
 {
-  "accessory": "HttpTemperature",
+  "accessory": "HttpClimate",
   "name": "Outside",
   "url": "http://192.168.1.100/sensor",
   "field_name": "temperature"
@@ -102,7 +102,7 @@ When the endpoint returns just a plain number (e.g. `22.5`):
 
 ```json
 {
-  "accessory": "HttpTemperature",
+  "accessory": "HttpClimate",
   "name": "Outside",
   "url": "http://192.168.1.100/temp",
   "field_name": ""
@@ -113,7 +113,7 @@ When the endpoint returns just a plain number (e.g. `22.5`):
 
 ```json
 {
-  "accessory": "HttpTemperature",
+  "accessory": "HttpClimate",
   "name": "Outside",
   "url": "https://192.168.1.100/sensor",
   "field_name": "temperature",

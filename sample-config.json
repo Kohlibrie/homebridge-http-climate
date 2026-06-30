@@ -12,7 +12,7 @@
 
     "accessories": [
         {
-            "accessory": "HttpTemperature",
+            "accessory": "HttpClimate",
             "name": "Global Temperature",
             "url": "https://temperature.global/api.php",
             "field_name": "temp",

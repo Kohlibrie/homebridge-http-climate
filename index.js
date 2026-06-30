@@ -13,11 +13,11 @@ const DEF_MIN_TEMPERATURE = -100,
 module.exports = function (homebridge) {
    Service = homebridge.hap.Service;
    Characteristic = homebridge.hap.Characteristic;
-   homebridge.registerAccessory("homebridge-http-temperature", "HttpTemperature", HttpTemperature);
+   homebridge.registerAccessory("homebridge-http-climate", "HttpClimate", HttpClimate);
 }
 
 
-function HttpTemperature(log, config) {
+function HttpClimate(log, config) {
    this.log = log;
 
    this.name = config.name;
@@ -64,7 +64,7 @@ function HttpTemperature(log, config) {
    this.waiting_response = false;
 }
 
-HttpTemperature.prototype = {
+HttpClimate.prototype = {
 
    logDebug: function (str) {
       if (this.debug) {
