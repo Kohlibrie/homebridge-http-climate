@@ -1,22 +1,25 @@
 {
-  "name": "homebridge-http-temperature",
-  "version": "0.10.0",
-  "description": "http/s plugin for homebridge supporting temperature sensors",
+  "name": "homebridge-http-climate",
+  "version": "1.0.0",
+  "description": "Homebridge plugin that exposes temperature and humidity from a single HTTP/HTTPS endpoint",
   "license": "ISC",
   "keywords": [
     "homebridge-plugin",
     "http",
-    "temperature sensor"
+    "temperature",
+    "humidity",
+    "climate",
+    "sensor"
   ],
   "engines": {
     "node": ">=0.12.0",
     "homebridge": ">=0.2.0"
   },
   "author": {
-    "name": "@metbosch"
+    "name": "Kohlibrie"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/metbosch/homebridge-http-temperature.git"
+    "url": "git://github.com/Kohlibrie/homebridge-http-climate.git"
   }
 }

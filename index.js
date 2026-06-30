@@ -33,6 +33,7 @@ function HttpTemperature(log, config) {
    this.model = config["model"] || "Model not available";
    this.serial = config["serial"] || "Non-defined serial";
    this.fieldName = ( config["field_name"] != null ? config["field_name"] : "temperature" );
+   this.humidityFieldName = ( config["humidity_field_name"] != null ? config["humidity_field_name"] : null );
    this.minTemperature = config["min_temp"] || DEF_MIN_TEMPERATURE;
    this.maxTemperature = config["max_temp"] || DEF_MAX_TEMPERATURE;
    this.units = config["units"] || DEF_UNITS;
@@ -86,39 +87,72 @@ HttpTemperature.prototype = {
                body += chunk;
             });
             res.on('end', () => {
-               let value = null;
+               let temperature = null;
+               let humidity = null;
                try {
-                  let value_str = this.fieldName === '' ? body : this.getFromObject(JSON.parse(body), this.fieldName, '');
-                  value_str = value_str.replace(/[^0-9.]/g, '');
-                  value = Number(value_str);
-                  if (value_str === '' || isNaN(value)) {
+                  // Parse JSON once if any field requires it
+                  let parsedBody = null;
+                  const needsJson = this.fieldName !== '' || (this.humidityFieldName !== null && this.humidityFieldName !== '');
+                  if (needsJson) {
+                     parsedBody = JSON.parse(body);
+                  }
+
+                  // Extract temperature
+                  let value_str = this.fieldName === '' ? body : this.getFromObject(parsedBody, this.fieldName, '');
+                  value_str = String(value_str).replace(/[^0-9.]/g, '');
+                  temperature = Number(value_str);
+                  if (value_str === '' || isNaN(temperature)) {
                      throw new Error('Received value is not a number: "' + value_str + '" ("' + body.substring(0, 100) + '")');
-                  } else if (value < this.minTemperature || value > this.maxTemperature) {
-                     var msg = 'Received value is out of bounds: "' + value + '". min=' + this.minTemperature +
+                  } else if (temperature < this.minTemperature || temperature > this.maxTemperature) {
+                     var msg = 'Received value is out of bounds: "' + temperature + '". min=' + this.minTemperature +
                                ', max= ' + this.maxTemperature;
                      throw new Error(msg);
                   }
-                  this.logDebug('HTTP successful response: ' + value);
+                  this.logDebug('HTTP successful response: ' + temperature);
                   if (this.units === FAHRENHEIT_UNITS) {
-                     value = (value - 32)/1.8;
-                     this.logDebug('Converted Fahrenheit temperature to celsius: ' + value);
+                     temperature = (temperature - 32)/1.8;
+                     this.logDebug('Converted Fahrenheit temperature to celsius: ' + temperature);
+                  }
+
+                  // Extract humidity if configured
+                  if (this.humidityFieldName !== null) {
+                     let hum_str = this.humidityFieldName === '' ? body : this.getFromObject(parsedBody, this.humidityFieldName, '');
+                     hum_str = String(hum_str).replace(/[^0-9.]/g, '');
+                     const hum_value = Number(hum_str);
+                     if (hum_str === '' || isNaN(hum_value)) {
+                        this.log('Could not parse humidity value: "' + hum_str + '"');
+                     } else {
+                        humidity = Math.max(0, Math.min(100, hum_value));
+                        this.logDebug('Humidity: ' + humidity);
+                     }
                   }
                } catch (error) {
                   reject(error);
+                  return;
                }
-               resolve(value);
+               resolve({ temperature, humidity });
             });
          }).on('error', reject).end();
       });
-      this.last_value.then((value) => {
+      this.last_value.then((data) => {
          this.temperatureService
-            .getCharacteristic(Characteristic.CurrentTemperature).updateValue(value);
+            .getCharacteristic(Characteristic.CurrentTemperature).updateValue(data.temperature);
          this.temperatureService
             .getCharacteristic(Characteristic.StatusFault).updateValue(Characteristic.StatusFault.NO_FAULT);
+         if (this.humidityService && data.humidity !== null) {
+            this.humidityService
+               .getCharacteristic(Characteristic.CurrentRelativeHumidity).updateValue(data.humidity);
+            this.humidityService
+               .getCharacteristic(Characteristic.StatusFault).updateValue(Characteristic.StatusFault.NO_FAULT);
+         }
          this.waiting_response = false;
       }).catch((error) => {
          this.temperatureService
             .getCharacteristic(Characteristic.StatusFault).updateValue(Characteristic.StatusFault.GENERAL_FAULT);
+         if (this.humidityService) {
+            this.humidityService
+               .getCharacteristic(Characteristic.StatusFault).updateValue(Characteristic.StatusFault.GENERAL_FAULT);
+         }
          this.log('Error updating state: ' + error.message);
          this.waiting_response = false;
       });
@@ -127,8 +161,22 @@ HttpTemperature.prototype = {
    getState: function (callback) {
       this.logDebug('Call to getState: waiting_response is "' + this.waiting_response + '"' );
       this.updateState(); //This sets the promise in last_value
-      this.last_value.then((value) => {
-         callback(null, value);
+      this.last_value.then((data) => {
+         callback(null, data.temperature);
+      }).catch((error) => {
+         callback(error, null);
+      });
+   },
+
+   getHumidityState: function (callback) {
+      this.logDebug('Call to getHumidityState: waiting_response is "' + this.waiting_response + '"');
+      this.updateState(); //Reuses in-flight request if one is already running
+      this.last_value.then((data) => {
+         if (data.humidity !== null) {
+            callback(null, data.humidity);
+         } else {
+            callback(new Error('No humidity data available'), null);
+         }
       }).catch((error) => {
          callback(error, null);
       });
@@ -150,11 +198,21 @@ HttpTemperature.prototype = {
              maxValue: this.maxTemperature
          });
 
+      const services = [this.informationService, this.temperatureService];
+
+      if (this.humidityFieldName !== null) {
+         this.humidityService = new Service.HumiditySensor(this.name);
+         this.humidityService
+            .getCharacteristic(Characteristic.CurrentRelativeHumidity)
+            .on('get', this.getHumidityState.bind(this));
+         services.push(this.humidityService);
+      }
+
       if (this.update_interval > 0) {
          this.timer = setInterval(this.updateState.bind(this), this.update_interval);
       }
 
-      return [this.informationService, this.temperatureService];
+      return services;
    },
 
    getFromObject: function (obj, path, def) {
