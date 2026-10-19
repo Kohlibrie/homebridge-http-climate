@@ -102,7 +102,7 @@ HttpClimate.prototype = {
                   value_str = String(value_str).replace(/[^0-9.]/g, '');
                   temperature = Number(value_str);
                   if (value_str === '' || isNaN(temperature)) {
-                     throw new Error('Received value is not a number: "' + value_str + '" ("' + body.substring(0, 100) + '")');
+                     throw new Error('Received value is not a number: "' + value_str + '" ("' + body + '")');
                   } else if (temperature < this.minTemperature || temperature > this.maxTemperature) {
                      var msg = 'Received value is out of bounds: "' + temperature + '". min=' + this.minTemperature +
                                ', max= ' + this.maxTemperature;
